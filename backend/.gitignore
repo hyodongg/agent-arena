@@ -36,3 +36,6 @@ out/
 ### VS Code ###
 .vscode/
 
+### Docs (local planning docs, not committed) ###
+docs/
+
