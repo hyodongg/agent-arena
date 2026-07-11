@@ -2,7 +2,7 @@
 name: "✨ [Feat] 기능 추가"
 about: 새로운 기능을 추가합니다
 title: "[Feat] "
-labels: "Feat"
+labels: "✨ Feat"
 ---
 
 ## 📌 작업 설명

@@ -2,7 +2,7 @@
 name: "📝 [Docs] 문서 작업"
 about: 문서를 추가하거나 수정합니다
 title: "[Docs] "
-labels: "Docs"
+labels: "📝 Docs"
 ---
 
 ## 📌 작업 설명

@@ -2,7 +2,7 @@
 name: "♻️ [Refactor] 리팩토링"
 about: 코드를 리팩토링합니다
 title: "[Refactor] "
-labels: "Refactor"
+labels: "♻️ Refactor"
 ---
 
 ## 📌 작업 설명

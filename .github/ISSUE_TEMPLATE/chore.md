@@ -2,7 +2,7 @@
 name: "⚙️ [Chore] 기타 작업"
 about: 설정, 의존성 등 기타 작업을 합니다
 title: "[Chore] "
-labels: "Chore"
+labels: "🧹 Chore"
 ---
 
 ## 📌 작업 설명
