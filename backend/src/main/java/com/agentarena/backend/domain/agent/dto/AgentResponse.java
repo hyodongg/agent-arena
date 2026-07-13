@@ -1,6 +1,7 @@
 package com.agentarena.backend.domain.agent.dto;
 
 import com.agentarena.backend.domain.agent.Agent;
+import com.agentarena.backend.domain.agent.AgentStyle;
 
 public record AgentResponse(
         Long id,
@@ -10,7 +11,8 @@ public record AgentResponse(
         String investmentPrompt,
         Double cumulativeReturn,
         Long cashBalance,
-        Long initialCapital
+        Long initialCapital,
+        AgentStyle style
 ) {
 
     public static AgentResponse from(Agent agent) {
@@ -22,7 +24,8 @@ public record AgentResponse(
                 agent.getInvestmentPrompt(),
                 agent.getCumulativeReturn(),
                 agent.getCashBalance(),
-                agent.getInitialCapital()
+                agent.getInitialCapital(),
+                agent.getStyle()
         );
     }
 }

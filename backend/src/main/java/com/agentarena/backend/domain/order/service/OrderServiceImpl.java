@@ -41,8 +41,13 @@ public class OrderServiceImpl implements OrderService {
 
         List<Agent> agents = agentRepository.findAll();
         for (Agent agent : agents) {
+            if (Math.random() > agent.getStyle().getReactionProbability()) {
+                continue;
+            }
+
             BigDecimal executionPrice = stock.getCurrentPrice();
-            BigDecimal tradeQuantity = TRADE_NOTIONAL_AMOUNT.divide(executionPrice, 8, RoundingMode.HALF_UP);
+            BigDecimal notionalAmount = TRADE_NOTIONAL_AMOUNT.multiply(BigDecimal.valueOf(agent.getStyle().getNotionalMultiplier()));
+            BigDecimal tradeQuantity = notionalAmount.divide(executionPrice, 8, RoundingMode.HALF_UP);
 
             orderRepository.save(
                     Order.builder()

@@ -1,6 +1,7 @@
 package com.agentarena.backend.domain.agent.service;
 
 import com.agentarena.backend.domain.agent.Agent;
+import com.agentarena.backend.domain.agent.AgentStyle;
 import com.agentarena.backend.domain.agent.dto.AgentCreateRequest;
 import com.agentarena.backend.domain.agent.dto.AgentResponse;
 import com.agentarena.backend.domain.agent.exception.AgentNotFoundException;
@@ -38,6 +39,7 @@ public class AgentServiceImpl implements AgentService {
                         .cumulativeReturn(INITIAL_CUMULATIVE_RETURN)
                         .cashBalance(INITIAL_CAPITAL)
                         .initialCapital(INITIAL_CAPITAL)
+                        .style(AgentStyle.classify(request.investmentPrompt()))
                         .build()
         );
         return AgentResponse.from(agent);
