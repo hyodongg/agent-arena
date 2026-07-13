@@ -2,17 +2,30 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { setUsername } from "@/lib/auth";
+import { setUser } from "@/lib/auth";
+import { ApiError, enterUser } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsernameInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim()) return;
-    setUsername(username.trim());
-    router.push("/arena");
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const user = await enterUser(username.trim());
+      setUser(user);
+      router.push("/arena");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "로그인에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -33,11 +46,13 @@ export default function LoginPage() {
           className="rounded-md border border-black/10 px-3 py-2 outline-none focus:border-black/30 dark:border-white/15 dark:focus:border-white/40"
           autoFocus
         />
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         <button
           type="submit"
-          className="rounded-md bg-foreground px-3 py-2 font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+          disabled={submitting}
+          className="rounded-md bg-foreground px-3 py-2 font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
         >
-          입장하기
+          {submitting ? "입장 중..." : "입장하기"}
         </button>
       </form>
     </div>
