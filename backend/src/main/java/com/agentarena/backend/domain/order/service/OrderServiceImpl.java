@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
-    private static final Long ORDER_QUANTITY = 10L;
+    private static final BigDecimal TRADE_NOTIONAL_AMOUNT = new BigDecimal("100000");
     private static final BigDecimal BUY_IMPACT = new BigDecimal("1.01");
     private static final BigDecimal SELL_IMPACT = new BigDecimal("0.99");
 
@@ -42,13 +42,14 @@ public class OrderServiceImpl implements OrderService {
         List<Agent> agents = agentRepository.findAll();
         for (Agent agent : agents) {
             BigDecimal executionPrice = stock.getCurrentPrice();
+            BigDecimal tradeQuantity = TRADE_NOTIONAL_AMOUNT.divide(executionPrice, 8, RoundingMode.HALF_UP);
 
             orderRepository.save(
                     Order.builder()
                             .agent(agent)
                             .stock(stock)
                             .type(type)
-                            .quantity(ORDER_QUANTITY)
+                            .quantity(tradeQuantity)
                             .price(executionPrice)
                             .executedAt(LocalDateTime.now())
                             .build()
@@ -56,14 +57,14 @@ public class OrderServiceImpl implements OrderService {
 
             BigDecimal impact = type == OrderType.BUY ? BUY_IMPACT : SELL_IMPACT;
             BigDecimal nextPrice = executionPrice.multiply(impact).setScale(4, RoundingMode.HALF_UP);
-            stock.reflectTrade(nextPrice, ORDER_QUANTITY);
+            stock.reflectTrade(nextPrice, tradeQuantity);
 
-            settleTrade(agent, stock, type, executionPrice);
+            settleTrade(agent, stock, type, executionPrice, tradeQuantity);
         }
     }
 
-    private void settleTrade(Agent agent, Stock stock, OrderType type, BigDecimal executionPrice) {
-        long tradeValue = executionPrice.multiply(BigDecimal.valueOf(ORDER_QUANTITY))
+    private void settleTrade(Agent agent, Stock stock, OrderType type, BigDecimal executionPrice, BigDecimal tradeQuantity) {
+        long tradeValue = executionPrice.multiply(tradeQuantity)
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact();
         agent.adjustCash(type == OrderType.BUY ? -tradeValue : tradeValue);
@@ -73,17 +74,17 @@ public class OrderServiceImpl implements OrderService {
                         AgentHolding.builder()
                                 .agent(agent)
                                 .stock(stock)
-                                .quantity(0L)
+                                .quantity(BigDecimal.ZERO)
                                 .build()
                 ));
-        holding.adjustQuantity(type == OrderType.BUY ? ORDER_QUANTITY : -ORDER_QUANTITY);
+        holding.adjustQuantity(type == OrderType.BUY ? tradeQuantity : tradeQuantity.negate());
 
         agent.updateCumulativeReturn(calculateCumulativeReturn(agent));
     }
 
     private Double calculateCumulativeReturn(Agent agent) {
         BigDecimal holdingsValue = agentHoldingRepository.findByAgent_Id(agent.getId()).stream()
-                .map(holding -> holding.getStock().getCurrentPrice().multiply(BigDecimal.valueOf(holding.getQuantity())))
+                .map(holding -> holding.getStock().getCurrentPrice().multiply(holding.getQuantity()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalValue = BigDecimal.valueOf(agent.getCashBalance()).add(holdingsValue);

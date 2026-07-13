@@ -33,19 +33,19 @@ public class Stock extends BaseTimeEntity {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal currentPrice;
 
-    @Column(nullable = false)
-    private Long volume;
+    @Column(nullable = false, precision = 19, scale = 8)
+    private BigDecimal volume;
 
     @Builder
-    public Stock(String code, String name, BigDecimal currentPrice, Long volume) {
+    public Stock(String code, String name, BigDecimal currentPrice, BigDecimal volume) {
         this.code = code;
         this.name = name;
         this.currentPrice = currentPrice;
         this.volume = volume;
     }
 
-    public void reflectTrade(BigDecimal executedPrice, Long tradedQuantity) {
+    public void reflectTrade(BigDecimal executedPrice, BigDecimal tradedQuantity) {
         this.currentPrice = executedPrice;
-        this.volume += tradedQuantity;
+        this.volume = this.volume.add(tradedQuantity);
     }
 }

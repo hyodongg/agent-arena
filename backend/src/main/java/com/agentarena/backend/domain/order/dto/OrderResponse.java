@@ -12,7 +12,7 @@ public record OrderResponse(
         Long stockId,
         String stockCode,
         OrderType type,
-        Long quantity,
+        BigDecimal quantity,
         BigDecimal price,
         LocalDateTime executedAt
 ) {
