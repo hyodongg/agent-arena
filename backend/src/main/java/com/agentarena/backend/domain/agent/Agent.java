@@ -41,11 +41,28 @@ public class Agent extends BaseTimeEntity {
     @Column(nullable = false)
     private Double cumulativeReturn;
 
+    @Column(nullable = false)
+    private Long cashBalance;
+
+    @Column(nullable = false)
+    private Long initialCapital;
+
     @Builder
-    public Agent(User owner, String name, String investmentPrompt, Double cumulativeReturn) {
+    public Agent(User owner, String name, String investmentPrompt, Double cumulativeReturn,
+                 Long cashBalance, Long initialCapital) {
         this.owner = owner;
         this.name = name;
         this.investmentPrompt = investmentPrompt;
         this.cumulativeReturn = cumulativeReturn;
+        this.cashBalance = cashBalance;
+        this.initialCapital = initialCapital;
+    }
+
+    public void adjustCash(Long delta) {
+        this.cashBalance += delta;
+    }
+
+    public void updateCumulativeReturn(Double value) {
+        this.cumulativeReturn = value;
     }
 }

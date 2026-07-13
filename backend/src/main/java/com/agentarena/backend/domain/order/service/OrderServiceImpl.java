@@ -1,6 +1,8 @@
 package com.agentarena.backend.domain.order.service;
 
 import com.agentarena.backend.domain.agent.Agent;
+import com.agentarena.backend.domain.agent.AgentHolding;
+import com.agentarena.backend.domain.agent.repository.AgentHoldingRepository;
 import com.agentarena.backend.domain.agent.repository.AgentRepository;
 import com.agentarena.backend.domain.news.News;
 import com.agentarena.backend.domain.news.NewsSentiment;
@@ -29,6 +31,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final AgentRepository agentRepository;
+    private final AgentHoldingRepository agentHoldingRepository;
 
     @Override
     @Transactional
@@ -54,7 +57,42 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal impact = type == OrderType.BUY ? BUY_IMPACT : SELL_IMPACT;
             BigDecimal nextPrice = executionPrice.multiply(impact).setScale(4, RoundingMode.HALF_UP);
             stock.reflectTrade(nextPrice, ORDER_QUANTITY);
+
+            settleTrade(agent, stock, type, executionPrice);
         }
+    }
+
+    private void settleTrade(Agent agent, Stock stock, OrderType type, BigDecimal executionPrice) {
+        long tradeValue = executionPrice.multiply(BigDecimal.valueOf(ORDER_QUANTITY))
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValueExact();
+        agent.adjustCash(type == OrderType.BUY ? -tradeValue : tradeValue);
+
+        AgentHolding holding = agentHoldingRepository.findByAgent_IdAndStock_Id(agent.getId(), stock.getId())
+                .orElseGet(() -> agentHoldingRepository.save(
+                        AgentHolding.builder()
+                                .agent(agent)
+                                .stock(stock)
+                                .quantity(0L)
+                                .build()
+                ));
+        holding.adjustQuantity(type == OrderType.BUY ? ORDER_QUANTITY : -ORDER_QUANTITY);
+
+        agent.updateCumulativeReturn(calculateCumulativeReturn(agent));
+    }
+
+    private Double calculateCumulativeReturn(Agent agent) {
+        BigDecimal holdingsValue = agentHoldingRepository.findByAgent_Id(agent.getId()).stream()
+                .map(holding -> holding.getStock().getCurrentPrice().multiply(BigDecimal.valueOf(holding.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalValue = BigDecimal.valueOf(agent.getCashBalance()).add(holdingsValue);
+        BigDecimal initialCapital = BigDecimal.valueOf(agent.getInitialCapital());
+
+        return totalValue.subtract(initialCapital)
+                .divide(initialCapital, 6, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .doubleValue();
     }
 
     @Override
