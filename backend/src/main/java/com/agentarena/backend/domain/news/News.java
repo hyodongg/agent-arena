@@ -44,11 +44,18 @@ public class News extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime publishedAt;
 
+    @Column
+    private LocalDateTime injectedAt;
+
     @Builder
     public News(Stock relatedStock, String title, NewsSentiment sentiment, LocalDateTime publishedAt) {
         this.relatedStock = relatedStock;
         this.title = title;
         this.sentiment = sentiment;
         this.publishedAt = publishedAt;
+    }
+
+    public void inject(LocalDateTime injectedAt) {
+        this.injectedAt = injectedAt;
     }
 }
