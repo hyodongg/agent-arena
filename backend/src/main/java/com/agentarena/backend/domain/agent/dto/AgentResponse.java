@@ -8,7 +8,9 @@ public record AgentResponse(
         String ownerUsername,
         String name,
         String investmentPrompt,
-        Double cumulativeReturn
+        Double cumulativeReturn,
+        Long cashBalance,
+        Long initialCapital
 ) {
 
     public static AgentResponse from(Agent agent) {
@@ -18,7 +20,9 @@ public record AgentResponse(
                 agent.getOwner().getUsername(),
                 agent.getName(),
                 agent.getInvestmentPrompt(),
-                agent.getCumulativeReturn()
+                agent.getCumulativeReturn(),
+                agent.getCashBalance(),
+                agent.getInitialCapital()
         );
     }
 }

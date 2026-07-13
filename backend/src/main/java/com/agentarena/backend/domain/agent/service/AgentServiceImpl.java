@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AgentServiceImpl implements AgentService {
 
     private static final Double INITIAL_CUMULATIVE_RETURN = 0.0;
+    private static final Long INITIAL_CAPITAL = 1_000_000L;
 
     private final AgentRepository agentRepository;
     private final UserRepository userRepository;
@@ -35,6 +36,8 @@ public class AgentServiceImpl implements AgentService {
                         .name(request.name())
                         .investmentPrompt(request.investmentPrompt())
                         .cumulativeReturn(INITIAL_CUMULATIVE_RETURN)
+                        .cashBalance(INITIAL_CAPITAL)
+                        .initialCapital(INITIAL_CAPITAL)
                         .build()
         );
         return AgentResponse.from(agent);
