@@ -4,6 +4,8 @@ import com.agentarena.backend.common.BaseTimeEntity;
 import com.agentarena.backend.domain.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -47,15 +49,20 @@ public class Agent extends BaseTimeEntity {
     @Column(nullable = false)
     private Long initialCapital;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AgentStyle style;
+
     @Builder
     public Agent(User owner, String name, String investmentPrompt, Double cumulativeReturn,
-                 Long cashBalance, Long initialCapital) {
+                 Long cashBalance, Long initialCapital, AgentStyle style) {
         this.owner = owner;
         this.name = name;
         this.investmentPrompt = investmentPrompt;
         this.cumulativeReturn = cumulativeReturn;
         this.cashBalance = cashBalance;
         this.initialCapital = initialCapital;
+        this.style = style;
     }
 
     public void adjustCash(Long delta) {
