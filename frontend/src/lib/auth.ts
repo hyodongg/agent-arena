@@ -1,14 +1,24 @@
-const USERNAME_KEY = "agent-arena-username";
+import type { UserResponse } from "./types";
 
-export function getUsername(): string | null {
+const USER_KEY = "agent-arena-user";
+
+// Returns the raw string so it stays reference-stable for useSyncExternalStore
+// (a freshly-parsed object would differ on every call and re-render forever).
+export function getRawUser(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(USERNAME_KEY);
+  return localStorage.getItem(USER_KEY);
 }
 
-export function setUsername(username: string) {
-  localStorage.setItem(USERNAME_KEY, username);
+export function getUser(): UserResponse | null {
+  const raw = getRawUser();
+  if (!raw) return null;
+  return JSON.parse(raw);
 }
 
-export function clearUsername() {
-  localStorage.removeItem(USERNAME_KEY);
+export function setUser(user: UserResponse) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function clearUser() {
+  localStorage.removeItem(USER_KEY);
 }
