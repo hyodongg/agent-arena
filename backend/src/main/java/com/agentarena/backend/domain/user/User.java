@@ -37,4 +37,8 @@ public class User extends BaseTimeEntity {
     public void deductTokenBalance(Long amount) {
         this.tokenBalance -= amount;
     }
+
+    public void addTokenBalance(Long amount) {
+        this.tokenBalance += amount;
+    }
 }

@@ -7,6 +7,7 @@ import com.agentarena.backend.domain.betting.Betting;
 import com.agentarena.backend.domain.betting.BettingStatus;
 import com.agentarena.backend.domain.betting.dto.BettingCreateRequest;
 import com.agentarena.backend.domain.betting.dto.BettingResponse;
+import com.agentarena.backend.domain.betting.dto.RoundSettleResponse;
 import com.agentarena.backend.domain.betting.exception.BettingNotFoundException;
 import com.agentarena.backend.domain.betting.exception.InsufficientTokenBalanceException;
 import com.agentarena.backend.domain.betting.repository.BettingRepository;
@@ -22,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BettingServiceImpl implements BettingService {
+
+    private static final long PAYOUT_MULTIPLIER = 2L;
 
     private final BettingRepository bettingRepository;
     private final UserRepository userRepository;
@@ -72,5 +75,29 @@ public class BettingServiceImpl implements BettingService {
         Betting betting = bettingRepository.findById(id)
                 .orElseThrow(BettingNotFoundException::new);
         return BettingResponse.from(betting);
+    }
+
+    @Override
+    @Transactional
+    public RoundSettleResponse settleRound(Long round) {
+        Agent winner = agentRepository.findFirstByOrderByCumulativeReturnDescIdAsc()
+                .orElseThrow(AgentNotFoundException::new);
+
+        List<Betting> inProgressBettings = bettingRepository.findByRoundAndStatus(round, BettingStatus.IN_PROGRESS);
+
+        int wonCount = 0;
+        int lostCount = 0;
+        for (Betting betting : inProgressBettings) {
+            if (betting.getAgent().getId().equals(winner.getId())) {
+                betting.settle(BettingStatus.WON);
+                betting.getUser().addTokenBalance(betting.getAmount() * PAYOUT_MULTIPLIER);
+                wonCount++;
+            } else {
+                betting.settle(BettingStatus.LOST);
+                lostCount++;
+            }
+        }
+
+        return new RoundSettleResponse(round, winner.getId(), winner.getName(), wonCount, lostCount);
     }
 }

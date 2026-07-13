@@ -55,4 +55,8 @@ public class Betting extends BaseTimeEntity {
         this.amount = amount;
         this.status = status;
     }
+
+    public void settle(BettingStatus status) {
+        this.status = status;
+    }
 }

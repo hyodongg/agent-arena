@@ -2,6 +2,7 @@ package com.agentarena.backend.domain.betting.controller;
 
 import com.agentarena.backend.domain.betting.dto.BettingCreateRequest;
 import com.agentarena.backend.domain.betting.dto.BettingResponse;
+import com.agentarena.backend.domain.betting.dto.RoundSettleResponse;
 import com.agentarena.backend.domain.betting.service.BettingService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -40,5 +41,10 @@ public class BettingController {
     @GetMapping("/{id}")
     public BettingResponse findById(@PathVariable Long id) {
         return bettingService.findById(id);
+    }
+
+    @PostMapping("/rounds/{round}/settle")
+    public RoundSettleResponse settleRound(@PathVariable Long round) {
+        return bettingService.settleRound(round);
     }
 }
