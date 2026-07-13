@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 유저입니다."),
+    AGENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 에이전트입니다."),
     ;
 
     private final HttpStatus httpStatus;
