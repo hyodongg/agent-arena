@@ -44,8 +44,8 @@ public class Order extends BaseTimeEntity {
     @Column(nullable = false)
     private OrderType type;
 
-    @Column(nullable = false)
-    private Long quantity;
+    @Column(nullable = false, precision = 19, scale = 8)
+    private BigDecimal quantity;
 
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal price;
@@ -54,7 +54,7 @@ public class Order extends BaseTimeEntity {
     private LocalDateTime executedAt;
 
     @Builder
-    public Order(Agent agent, Stock stock, OrderType type, Long quantity, BigDecimal price, LocalDateTime executedAt) {
+    public Order(Agent agent, Stock stock, OrderType type, BigDecimal quantity, BigDecimal price, LocalDateTime executedAt) {
         this.agent = agent;
         this.stock = stock;
         this.type = type;

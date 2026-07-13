@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -34,17 +35,17 @@ public class AgentHolding extends BaseTimeEntity {
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
 
-    @Column(nullable = false)
-    private Long quantity;
+    @Column(nullable = false, precision = 19, scale = 8)
+    private BigDecimal quantity;
 
     @Builder
-    public AgentHolding(Agent agent, Stock stock, Long quantity) {
+    public AgentHolding(Agent agent, Stock stock, BigDecimal quantity) {
         this.agent = agent;
         this.stock = stock;
         this.quantity = quantity;
     }
 
-    public void adjustQuantity(Long delta) {
-        this.quantity += delta;
+    public void adjustQuantity(BigDecimal delta) {
+        this.quantity = this.quantity.add(delta);
     }
 }
