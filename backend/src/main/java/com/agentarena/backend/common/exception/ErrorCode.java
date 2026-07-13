@@ -9,6 +9,8 @@ public enum ErrorCode {
     STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 종목입니다."),
     NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 뉴스입니다."),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
+    BETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 배팅입니다."),
+    INSUFFICIENT_TOKEN_BALANCE(HttpStatus.BAD_REQUEST, "토큰 잔액이 부족합니다."),
     ;
 
     private final HttpStatus httpStatus;
