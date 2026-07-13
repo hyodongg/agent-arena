@@ -11,6 +11,9 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
     BETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 배팅입니다."),
     INSUFFICIENT_TOKEN_BALANCE(HttpStatus.BAD_REQUEST, "토큰 잔액이 부족합니다."),
+    ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않거나 현재 진행 중인 라운드가 없습니다."),
+    ROUND_ALREADY_OPEN(HttpStatus.CONFLICT, "이미 진행 중인 라운드가 있습니다."),
+    ROUND_ALREADY_SETTLED(HttpStatus.BAD_REQUEST, "이미 정산된 라운드입니다."),
     ;
 
     private final HttpStatus httpStatus;
