@@ -5,6 +5,7 @@ import com.agentarena.backend.domain.news.dto.NewsCreateRequest;
 import com.agentarena.backend.domain.news.dto.NewsResponse;
 import com.agentarena.backend.domain.news.exception.NewsNotFoundException;
 import com.agentarena.backend.domain.news.repository.NewsRepository;
+import com.agentarena.backend.domain.order.service.OrderService;
 import com.agentarena.backend.domain.stock.Stock;
 import com.agentarena.backend.domain.stock.exception.StockNotFoundException;
 import com.agentarena.backend.domain.stock.repository.StockRepository;
@@ -21,6 +22,7 @@ public class NewsServiceImpl implements NewsService {
 
     private final NewsRepository newsRepository;
     private final StockRepository stockRepository;
+    private final OrderService orderService;
 
     @Override
     @Transactional
@@ -57,6 +59,9 @@ public class NewsServiceImpl implements NewsService {
     @Transactional
     public void injectNext() {
         newsRepository.findFirstByInjectedAtIsNullOrderByPublishedAtAsc()
-                .ifPresent(news -> news.inject(LocalDateTime.now()));
+                .ifPresent(news -> {
+                    news.inject(LocalDateTime.now());
+                    orderService.simulateForNews(news);
+                });
     }
 }

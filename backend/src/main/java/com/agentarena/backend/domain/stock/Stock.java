@@ -43,4 +43,9 @@ public class Stock extends BaseTimeEntity {
         this.currentPrice = currentPrice;
         this.volume = volume;
     }
+
+    public void reflectTrade(BigDecimal executedPrice, Long tradedQuantity) {
+        this.currentPrice = executedPrice;
+        this.volume += tradedQuantity;
+    }
 }

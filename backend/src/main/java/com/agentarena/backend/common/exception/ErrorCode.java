@@ -8,6 +8,7 @@ public enum ErrorCode {
     AGENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 에이전트입니다."),
     STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 종목입니다."),
     NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 뉴스입니다."),
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
     ;
 
     private final HttpStatus httpStatus;
