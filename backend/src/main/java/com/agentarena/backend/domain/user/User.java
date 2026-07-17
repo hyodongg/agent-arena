@@ -26,11 +26,15 @@ public class User extends BaseTimeEntity {
     private String username;
 
     @Column(nullable = false)
+    private String password;
+
+    @Column(nullable = false)
     private Long tokenBalance;
 
     @Builder
-    public User(String username, Long tokenBalance) {
+    public User(String username, String password, Long tokenBalance) {
         this.username = username;
+        this.password = password;
         this.tokenBalance = tokenBalance;
     }
 
