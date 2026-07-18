@@ -4,7 +4,9 @@ import com.agentarena.backend.domain.user.dto.UserResponse;
 
 public interface UserService {
 
-    UserResponse enter(String username);
+    UserResponse signup(String username, String password);
+
+    UserResponse login(String username, String password);
 
     UserResponse findById(Long id);
 }
