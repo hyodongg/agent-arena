@@ -7,6 +7,7 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 유저입니다."),
     DUPLICATE_USERNAME(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."),
+    PASSWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "비밀번호가 너무 깁니다."),
     AGENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 에이전트입니다."),
     STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 종목입니다."),
     NEWS_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 뉴스입니다."),
