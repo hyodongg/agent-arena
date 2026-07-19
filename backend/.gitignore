@@ -39,3 +39,7 @@ out/
 ### Docs (local planning docs, not committed) ###
 docs/
 
+### Secrets (local-only, never committed) ###
+.env
+.env.*
+
