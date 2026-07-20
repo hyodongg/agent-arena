@@ -44,8 +44,13 @@ public class Stock extends BaseTimeEntity {
         this.volume = volume;
     }
 
-    public void reflectTrade(BigDecimal executedPrice, BigDecimal tradedQuantity) {
-        this.currentPrice = executedPrice;
-        this.volume = this.volume.add(tradedQuantity);
+    /**
+     * 외부 시세 API로 받아온 시장 데이터를 반영한다.
+     *
+     * <p>가격과 거래량을 바꾸는 유일한 경로다. 에이전트의 가상 체결은 이 값을 읽기만 한다.
+     */
+    public void syncMarketData(BigDecimal currentPrice, BigDecimal volume) {
+        this.currentPrice = currentPrice;
+        this.volume = volume;
     }
 }
