@@ -34,6 +34,7 @@ public class NewsServiceImpl implements NewsService {
                 News.builder()
                         .relatedStock(relatedStock)
                         .title(request.title())
+                        .sourceUrl(request.sourceUrl())
                         .sentiment(request.sentiment())
                         .publishedAt(request.publishedAt())
                         .build()

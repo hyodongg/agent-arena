@@ -10,4 +10,6 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     Optional<News> findFirstByInjectedAtIsNullOrderByPublishedAtAsc();
 
     List<News> findByInjectedAtIsNotNullOrderByInjectedAtDesc();
+
+    boolean existsBySourceUrl(String sourceUrl);
 }

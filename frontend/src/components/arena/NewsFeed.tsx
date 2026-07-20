@@ -25,9 +25,16 @@ export function NewsFeed() {
                     : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
                 }`}
               >
-                {item.relatedStockCode}
+                {item.relatedStockName}
               </span>
-              <span className="flex-1">{item.title}</span>
+              <a
+                href={item.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 hover:underline"
+              >
+                {item.title}
+              </a>
             </li>
           ))}
         </ul>

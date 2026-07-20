@@ -8,7 +8,9 @@ public record NewsResponse(
         Long id,
         Long relatedStockId,
         String relatedStockCode,
+        String relatedStockName,
         String title,
+        String sourceUrl,
         NewsSentiment sentiment,
         LocalDateTime publishedAt,
         LocalDateTime injectedAt
@@ -19,7 +21,9 @@ public record NewsResponse(
                 news.getId(),
                 news.getRelatedStock().getId(),
                 news.getRelatedStock().getCode(),
+                news.getRelatedStock().getName(),
                 news.getTitle(),
+                news.getSourceUrl(),
                 news.getSentiment(),
                 news.getPublishedAt(),
                 news.getInjectedAt()
