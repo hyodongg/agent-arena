@@ -1,0 +1,86 @@
+# 실뉴스 연동 설계 (2026-07-20)
+
+제품 방향 로드맵의 **서브프로젝트 2**. 더미 뉴스를 네이버 뉴스 API로 수집한 실제 기사로 교체한다.
+
+## 풀어야 할 문제
+
+네이버 뉴스 검색은 회사명이 스쳐 지나가기만 해도 걸린다. 실제로 확인한 결과:
+
+- `query=카카오&sort=date` → "웹툰 테마 숨고르기", "이태리 석유 재벌 행세 경찰 수사", "오타니 고교 후배도 메이저로"
+- `query=카카오&sort=sim` → 전부 반려동물 이벤트 기사
+- `query=카카오 주가&sort=sim` → "카카오 주가, 7월 20일 장중 35,800원", "증권사 90% 목표주가 줄하향"
+
+즉 **검색어를 `"<종목명> 주가"`로 하고 정확도순(`sort=sim`)으로 받아도, 종목과 무관한 기사가 섞인다.** 제목 키워드 매칭으로는 걸러지지 않는다. 그래서 LLM에게 관련성과 호재/악재를 함께 판정시킨다.
+
+## 설계
+
+### 1. 수집과 주입을 분리한다
+
+지금 `NewsInjectionScheduler`(5초)는 저장된 뉴스 중 `injectedAt`이 비어있는 것을 하나씩 아레나에 주입한다. 이 구조는 그대로 두고, **그 앞단에 수집 단계를 새로 붙인다.**
+
+```
+[수집] NewsCollectionScheduler (60초) → 네이버 검색 → LLM 판정 → News 저장(injectedAt=null)
+[주입] NewsInjectionScheduler   (5초)  → 오래된 것부터 하나씩 injectedAt 기록 → 에이전트 매매 유발
+```
+
+수집이 느리고 주입이 빠른 건 의도한 것이다. 뉴스가 쌓이는 속도보다 소비되는 속도가 빠르면 아레나가 조용해지는데, 그건 실제 뉴스 발생 빈도를 반영한 자연스러운 상태다.
+
+### 2. 종목 라운드로빈
+
+한 번에 30종목을 다 훑으면 LLM 호출이 몰린다. **60초마다 종목 하나씩** 돌아가며 수집한다. 30종목 한 바퀴에 30분이 걸린다.
+
+커서는 메모리에 둔 `AtomicInteger`다. 재시작하면 0으로 돌아가지만 무해하다.
+
+### 3. 중복 제거
+
+`News`에 `sourceUrl` 컬럼을 추가하고 유니크 제약을 건다. 네이버 응답의 `link`를 쓴다. 같은 기사를 다시 받으면 저장 전에 걸러낸다.
+
+### 4. LLM 판정
+
+종목 하나당 후보 기사 5건을 **한 번의 호출로 묶어서** 판정한다. 종목당 1회, 분당 1회이므로 시간당 60회다.
+
+모델은 `gpt-4o-mini`. 응답은 `response_format: json_object`로 강제한다.
+
+판정 결과가 `relevant=false`거나 `sentiment=NEUTRAL`이면 저장하지 않는다. 에이전트가 반응할 수 있는 건 호재/악재뿐이라 중립 기사를 넣어봐야 아무 일도 일어나지 않는다.
+
+### 5. 새로 만드는 것
+
+- `common/client/naver/NaverNewsClient` — 뉴스 검색. `<종목명> 주가`, `sort=sim`, 5건.
+  - 제목의 `<b>` 태그와 HTML 엔티티(`&quot;` 등)를 벗겨낸다.
+  - `pubDate`는 RFC1123(`Mon, 20 Jul 2026 13:42:00 +0900`)이라 파싱해서 `LocalDateTime`으로 바꾼다.
+- `common/client/openai/OpenAiClient` — 채팅 완성 호출. JSON 응답 강제. 서브프로젝트 4에서도 쓴다.
+- `domain/news/service/NewsCollectionService` — 라운드로빈 + 중복 제거 + LLM 판정 + 저장
+- `domain/news/scheduler/NewsCollectionScheduler` — 60초 주기
+
+### 6. 이번 범위에 넣지 않는 것
+
+- 뉴스 본문 수집 — 제목만으로 판정한다. 본문 크롤링은 별개 문제고 비용도 늘어난다.
+- `NEUTRAL` sentiment 추가 — 저장 자체를 안 하므로 enum을 늘릴 이유가 없다.
+- 미국 뉴스 — 미국 시세 연동이 아직 없다.
+- LLM 호출 실패 재시도 — 다음 사이클에 같은 종목이 다시 돌아온다.
+
+## 설정
+
+```yaml
+naver:
+  base-url: https://openapi.naver.com
+  client-id: ${NAVER_CLIENT_ID}
+  client-secret: ${NAVER_CLIENT_SECRET}
+
+openai:
+  base-url: https://api.openai.com
+  api-key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
+```
+
+## 마이그레이션
+
+`sourceUrl`이 NOT NULL UNIQUE라서, 값이 없는 기존 더미 뉴스 20건은 컬럼 추가 전에 지운다. 이를 참조하는 `orders`도 함께 정리한다.
+
+## 검증 방법
+
+1. 수집 사이클 로그에서 종목이 하나씩 돌아가는지 확인
+2. 저장된 뉴스의 제목이 해당 종목과 실제로 관련 있는지 눈으로 확인 — 특히 카카오처럼 오탐이 심했던 종목
+3. 같은 기사가 두 번 저장되지 않는지 (`sourceUrl` 유니크)
+4. 주입된 뉴스가 에이전트 매매를 유발하는지
+5. 프론트엔드 뉴스 피드에 실제 기사 제목이 뜨는지
