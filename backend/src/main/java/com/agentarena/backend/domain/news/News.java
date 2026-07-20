@@ -37,6 +37,10 @@ public class News extends BaseTimeEntity {
     @Column(nullable = false)
     private String title;
 
+    /** 원본 기사 URL. 같은 기사를 다시 수집했을 때 걸러내는 기준이다. */
+    @Column(nullable = false, unique = true)
+    private String sourceUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private NewsSentiment sentiment;
@@ -48,9 +52,10 @@ public class News extends BaseTimeEntity {
     private LocalDateTime injectedAt;
 
     @Builder
-    public News(Stock relatedStock, String title, NewsSentiment sentiment, LocalDateTime publishedAt) {
+    public News(Stock relatedStock, String title, String sourceUrl, NewsSentiment sentiment, LocalDateTime publishedAt) {
         this.relatedStock = relatedStock;
         this.title = title;
+        this.sourceUrl = sourceUrl;
         this.sentiment = sentiment;
         this.publishedAt = publishedAt;
     }

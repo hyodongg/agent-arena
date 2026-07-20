@@ -13,3 +13,13 @@ kis:
   base-url: https://openapivts.koreainvestment.com:29443
   app-key: ${KIS_APP_KEY}
   app-secret: ${KIS_APP_SECRET}
+
+naver:
+  base-url: https://openapi.naver.com
+  client-id: ${NAVER_CLIENT_ID}
+  client-secret: ${NAVER_CLIENT_SECRET}
+
+openai:
+  base-url: https://api.openai.com
+  api-key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini

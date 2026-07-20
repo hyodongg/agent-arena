@@ -29,7 +29,9 @@ export interface NewsResponse {
   id: number;
   relatedStockId: number;
   relatedStockCode: string;
+  relatedStockName: string;
   title: string;
+  sourceUrl: string;
   sentiment: NewsSentiment;
   publishedAt: string;
   injectedAt: string | null;
