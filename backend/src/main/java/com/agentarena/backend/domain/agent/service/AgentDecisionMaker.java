@@ -70,6 +70,10 @@ public class AgentDecisionMaker {
             for (Agent agent : agents) {
                 recalls.put(agent.getId(), agentMemoryService.recall(agent.getId(), queryEmbedding));
             }
+            int recalled = recalls.values().stream().mapToInt(List::size).sum();
+            if (recalled > 0) {
+                log.info("과거 기억 회상: {}건을 판단에 반영한다", recalled);
+            }
             return recalls;
         } catch (Exception e) {
             log.warn("과거 기억 회상 실패, 기억 없이 판단한다: {}", e.getMessage());
