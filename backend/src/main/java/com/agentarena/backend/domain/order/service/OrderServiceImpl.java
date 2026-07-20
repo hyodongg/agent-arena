@@ -4,6 +4,9 @@ import com.agentarena.backend.domain.agent.Agent;
 import com.agentarena.backend.domain.agent.AgentHolding;
 import com.agentarena.backend.domain.agent.repository.AgentHoldingRepository;
 import com.agentarena.backend.domain.agent.repository.AgentRepository;
+import com.agentarena.backend.domain.agent.service.AgentAction;
+import com.agentarena.backend.domain.agent.service.AgentDecision;
+import com.agentarena.backend.domain.agent.service.AgentDecisionMaker;
 import com.agentarena.backend.domain.news.News;
 import com.agentarena.backend.domain.news.NewsSentiment;
 import com.agentarena.backend.domain.order.Order;
@@ -15,11 +18,17 @@ import com.agentarena.backend.domain.stock.Stock;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -30,36 +39,88 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final AgentRepository agentRepository;
     private final AgentHoldingRepository agentHoldingRepository;
+    private final AgentDecisionMaker agentDecisionMaker;
 
     @Override
     @Transactional
     public void simulateForNews(News news) {
-        OrderType type = news.getSentiment() == NewsSentiment.POSITIVE ? OrderType.BUY : OrderType.SELL;
         Stock stock = news.getRelatedStock();
-
         List<Agent> agents = agentRepository.findAll();
+        if (agents.isEmpty()) {
+            return;
+        }
+
+        Map<Long, BigDecimal> holdingQuantities = loadHoldingQuantities(agents, stock);
+
+        try {
+            applyDecisions(news, stock, agents, holdingQuantities);
+        } catch (Exception e) {
+            // LLM 장애로 아레나 전체가 멈추면 안 된다. 기존 확률 규칙으로 대신 움직인다.
+            log.warn("LLM 의사결정 실패, AgentStyle 규칙으로 폴백한다: {}", e.getMessage());
+            applyStyleFallback(news, stock, agents);
+        }
+    }
+
+    private void applyDecisions(News news, Stock stock, List<Agent> agents, Map<Long, BigDecimal> holdingQuantities) {
+        List<AgentDecision> decisions = agentDecisionMaker.decide(news, agents, holdingQuantities);
+        Map<Long, Agent> agentsById = agents.stream()
+                .collect(Collectors.toMap(Agent::getId, Function.identity()));
+
+        for (AgentDecision decision : decisions) {
+            Agent agent = agentsById.get(decision.agentId());
+            if (agent == null || !decision.isTrade()) {
+                continue;
+            }
+
+            OrderType type = decision.action() == AgentAction.BUY ? OrderType.BUY : OrderType.SELL;
+            BigDecimal holding = holdingQuantities.getOrDefault(agent.getId(), BigDecimal.ZERO);
+            if (type == OrderType.SELL && holding.signum() <= 0) {
+                // 보유하지 않은 종목은 팔 수 없다. 공매도는 이 시뮬레이션 범위가 아니다.
+                continue;
+            }
+
+            BigDecimal notionalAmount = TRADE_NOTIONAL_AMOUNT.multiply(BigDecimal.valueOf(decision.conviction()));
+            executeTrade(agent, stock, type, notionalAmount);
+        }
+    }
+
+    private void applyStyleFallback(News news, Stock stock, List<Agent> agents) {
+        OrderType type = news.getSentiment() == NewsSentiment.POSITIVE ? OrderType.BUY : OrderType.SELL;
         for (Agent agent : agents) {
             if (Math.random() > agent.getStyle().getReactionProbability()) {
                 continue;
             }
-
-            BigDecimal executionPrice = stock.getCurrentPrice();
-            BigDecimal notionalAmount = TRADE_NOTIONAL_AMOUNT.multiply(BigDecimal.valueOf(agent.getStyle().getNotionalMultiplier()));
-            BigDecimal tradeQuantity = notionalAmount.divide(executionPrice, 8, RoundingMode.HALF_UP);
-
-            orderRepository.save(
-                    Order.builder()
-                            .agent(agent)
-                            .stock(stock)
-                            .type(type)
-                            .quantity(tradeQuantity)
-                            .price(executionPrice)
-                            .executedAt(LocalDateTime.now())
-                            .build()
-            );
-
-            settleTrade(agent, stock, type, executionPrice, tradeQuantity);
+            BigDecimal notionalAmount = TRADE_NOTIONAL_AMOUNT
+                    .multiply(BigDecimal.valueOf(agent.getStyle().getNotionalMultiplier()));
+            executeTrade(agent, stock, type, notionalAmount);
         }
+    }
+
+    private void executeTrade(Agent agent, Stock stock, OrderType type, BigDecimal notionalAmount) {
+        BigDecimal executionPrice = stock.getCurrentPrice();
+        BigDecimal tradeQuantity = notionalAmount.divide(executionPrice, 8, RoundingMode.HALF_UP);
+
+        orderRepository.save(
+                Order.builder()
+                        .agent(agent)
+                        .stock(stock)
+                        .type(type)
+                        .quantity(tradeQuantity)
+                        .price(executionPrice)
+                        .executedAt(LocalDateTime.now())
+                        .build()
+        );
+
+        settleTrade(agent, stock, type, executionPrice, tradeQuantity);
+    }
+
+    private Map<Long, BigDecimal> loadHoldingQuantities(List<Agent> agents, Stock stock) {
+        Map<Long, BigDecimal> quantities = new HashMap<>();
+        for (Agent agent : agents) {
+            agentHoldingRepository.findByAgent_IdAndStock_Id(agent.getId(), stock.getId())
+                    .ifPresent(holding -> quantities.put(agent.getId(), holding.getQuantity()));
+        }
+        return quantities;
     }
 
     private void settleTrade(Agent agent, Stock stock, OrderType type, BigDecimal executionPrice, BigDecimal tradeQuantity) {
