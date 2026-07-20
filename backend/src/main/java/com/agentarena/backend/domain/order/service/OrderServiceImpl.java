@@ -7,6 +7,7 @@ import com.agentarena.backend.domain.agent.repository.AgentRepository;
 import com.agentarena.backend.domain.agent.service.AgentAction;
 import com.agentarena.backend.domain.agent.service.AgentDecision;
 import com.agentarena.backend.domain.agent.service.AgentDecisionMaker;
+import com.agentarena.backend.domain.agent.event.TradeExecutedEvent;
 import com.agentarena.backend.domain.news.News;
 import com.agentarena.backend.domain.news.NewsSentiment;
 import com.agentarena.backend.domain.order.Order;
@@ -25,6 +26,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
     private final AgentRepository agentRepository;
     private final AgentHoldingRepository agentHoldingRepository;
     private final AgentDecisionMaker agentDecisionMaker;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -81,7 +84,20 @@ public class OrderServiceImpl implements OrderService {
 
             BigDecimal notionalAmount = TRADE_NOTIONAL_AMOUNT.multiply(BigDecimal.valueOf(decision.conviction()));
             executeTrade(agent, stock, type, notionalAmount);
+            rememberTrade(agent, stock, news.getTitle(), type);
         }
+    }
+
+    /**
+     * 기억 저장은 이벤트로 미룬다. 이 트랜잭션이 커밋된 뒤 {@code TradeMemoryListener}가 처리한다.
+     *
+     * <p>여기서 바로 저장하면 임베딩 API 장애가 체결까지 되돌리고, 별도 트랜잭션으로 열면
+     * 이 트랜잭션이 잡고 있는 행 잠금을 스스로 기다리다 타임아웃 난다.
+     */
+    private void rememberTrade(Agent agent, Stock stock, String newsTitle, OrderType type) {
+        eventPublisher.publishEvent(new TradeExecutedEvent(
+                agent.getId(), agent.getName(), stock.getId(), newsTitle, type, stock.getCurrentPrice()
+        ));
     }
 
     private void applyStyleFallback(News news, Stock stock, List<Agent> agents) {

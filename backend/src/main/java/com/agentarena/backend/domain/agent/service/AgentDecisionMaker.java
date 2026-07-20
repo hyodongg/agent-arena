@@ -5,6 +5,7 @@ import com.agentarena.backend.domain.agent.Agent;
 import com.agentarena.backend.domain.news.News;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -39,21 +40,49 @@ public class AgentDecisionMaker {
             - 보유수량이 0인 종목은 매도할 수 없다. 그런 경우 SELL 대신 HOLD나 BUY를 선택하라.
             - conviction: 확신도 1~5 정수. 성향상 크게 베팅하는 에이전트일수록 높다.
               HOLD면 1로 둔다.
+            - 에이전트에 "과거 유사 상황" 기록이 붙어있으면 참고하라. 비슷한 뉴스에서 손실을 봤던
+              방식은 재고하고, 이익을 봤던 방식은 힘을 싣는다. 다만 투자 성향 지침이 우선이다.
 
             반드시 아래 형태의 JSON만 출력하라. 주어진 모든 에이전트에 대해 항목을 만들어야 한다.
             {"decisions":[{"agentId":1,"action":"BUY","conviction":3}]}
             """;
 
     private final OpenAiClient openAiClient;
+    private final AgentMemoryService agentMemoryService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<AgentDecision> decide(News news, List<Agent> agents, Map<Long, BigDecimal> holdingQuantities) {
-        String userPrompt = buildUserPrompt(news, agents, holdingQuantities);
+        Map<Long, List<RecalledMemory>> recalls = recallForAll(news, agents);
+        String userPrompt = buildUserPrompt(news, agents, holdingQuantities, recalls);
         String rawResponse = openAiClient.completeAsJson(SYSTEM_PROMPT, userPrompt);
         return parseDecisions(rawResponse);
     }
 
-    private String buildUserPrompt(News news, List<Agent> agents, Map<Long, BigDecimal> holdingQuantities) {
+    /**
+     * 뉴스 제목을 한 번만 임베딩해서 모든 에이전트의 회상에 재사용한다.
+     *
+     * <p>회상 실패는 치명적이지 않다. 기억 없이도 결정은 내릴 수 있으므로 빈 결과로 넘어간다.
+     */
+    private Map<Long, List<RecalledMemory>> recallForAll(News news, List<Agent> agents) {
+        try {
+            float[] queryEmbedding = agentMemoryService.embed(news.getTitle());
+            Map<Long, List<RecalledMemory>> recalls = new HashMap<>();
+            for (Agent agent : agents) {
+                recalls.put(agent.getId(), agentMemoryService.recall(agent.getId(), queryEmbedding));
+            }
+            int recalled = recalls.values().stream().mapToInt(List::size).sum();
+            if (recalled > 0) {
+                log.info("과거 기억 회상: {}건을 판단에 반영한다", recalled);
+            }
+            return recalls;
+        } catch (Exception e) {
+            log.warn("과거 기억 회상 실패, 기억 없이 판단한다: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private String buildUserPrompt(News news, List<Agent> agents, Map<Long, BigDecimal> holdingQuantities,
+                                   Map<Long, List<RecalledMemory>> recalls) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("[뉴스]\n")
                 .append("종목: ").append(news.getRelatedStock().getName()).append('\n')
@@ -70,8 +99,22 @@ public class AgentDecisionMaker {
                     .append(", 이 종목 보유수량=").append(holding.stripTrailingZeros().toPlainString())
                     .append("\n  투자 성향 지침: ").append(agent.getInvestmentPrompt())
                     .append('\n');
+            appendRecalls(prompt, recalls.get(agent.getId()));
         }
         return prompt.toString();
+    }
+
+    private void appendRecalls(StringBuilder prompt, List<RecalledMemory> memories) {
+        if (memories == null || memories.isEmpty()) {
+            return;
+        }
+        prompt.append("  과거 유사 상황:\n");
+        for (RecalledMemory memory : memories) {
+            prompt.append("    - \"").append(memory.newsTitle()).append("\" 에서 ")
+                    .append(memory.action() == com.agentarena.backend.domain.order.OrderType.BUY ? "매수" : "매도")
+                    .append("해서 수익률 ").append(String.format("%.2f%%", memory.returnRate()))
+                    .append('\n');
+        }
     }
 
     private List<AgentDecision> parseDecisions(String rawResponse) {

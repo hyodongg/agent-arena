@@ -17,6 +17,9 @@ import tools.jackson.databind.JsonNode;
 @Component
 public class OpenAiClient {
 
+    private static final String EMBEDDING_MODEL = "text-embedding-3-small";
+    private static final int EMBEDDING_DIMENSIONS = 256;
+
     private final RestClient restClient;
     private final OpenAiProperties properties;
 
@@ -53,5 +56,34 @@ public class OpenAiClient {
             throw new OpenAiApiException("LLM 응답 본문이 비어있다");
         }
         return content;
+    }
+
+    /**
+     * 문장의 임베딩 벡터를 받아온다.
+     *
+     * <p>차원을 256으로 줄여서 받는다. 기본값 1536을 그대로 쓰면 저장 용량이 6배가 되는데,
+     * 뉴스 제목끼리의 유사도 비교에는 256으로 충분하다.
+     */
+    public float[] embed(String text) {
+        JsonNode response = restClient.post()
+                .uri("/v1/embeddings")
+                .body(Map.of(
+                        "model", EMBEDDING_MODEL,
+                        "input", text,
+                        "dimensions", EMBEDDING_DIMENSIONS
+                ))
+                .retrieve()
+                .body(JsonNode.class);
+
+        if (response == null || !response.has("data") || response.path("data").isEmpty()) {
+            throw new OpenAiApiException("임베딩 응답이 비어있다");
+        }
+
+        JsonNode vector = response.path("data").get(0).path("embedding");
+        float[] embedding = new float[vector.size()];
+        for (int i = 0; i < vector.size(); i++) {
+            embedding[i] = (float) vector.get(i).asDouble();
+        }
+        return embedding;
     }
 }
