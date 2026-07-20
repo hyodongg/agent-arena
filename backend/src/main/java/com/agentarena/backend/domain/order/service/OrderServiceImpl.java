@@ -26,8 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderServiceImpl implements OrderService {
 
     private static final BigDecimal TRADE_NOTIONAL_AMOUNT = new BigDecimal("100000");
-    private static final BigDecimal BUY_IMPACT = new BigDecimal("1.01");
-    private static final BigDecimal SELL_IMPACT = new BigDecimal("0.99");
 
     private final OrderRepository orderRepository;
     private final AgentRepository agentRepository;
@@ -59,10 +57,6 @@ public class OrderServiceImpl implements OrderService {
                             .executedAt(LocalDateTime.now())
                             .build()
             );
-
-            BigDecimal impact = type == OrderType.BUY ? BUY_IMPACT : SELL_IMPACT;
-            BigDecimal nextPrice = executionPrice.multiply(impact).setScale(4, RoundingMode.HALF_UP);
-            stock.reflectTrade(nextPrice, tradeQuantity);
 
             settleTrade(agent, stock, type, executionPrice, tradeQuantity);
         }
