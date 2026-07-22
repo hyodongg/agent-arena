@@ -1,0 +1,88 @@
+{
+  "uid": "agent-arena",
+  "title": "Agent Arena",
+  "tags": ["agent-arena"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "title": "HikariCP 커넥션 (고갈이 여기 보인다)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "refId": "A", "expr": "hikaricp_connections_active{application=\"agent-arena\"}", "legendFormat": "active" },
+        { "refId": "B", "expr": "hikaricp_connections_idle{application=\"agent-arena\"}", "legendFormat": "idle" },
+        { "refId": "C", "expr": "hikaricp_connections_pending{application=\"agent-arena\"}", "legendFormat": "pending (대기 스레드)" },
+        { "refId": "D", "expr": "hikaricp_connections_max{application=\"agent-arena\"}", "legendFormat": "max" }
+      ]
+    },
+    {
+      "title": "커넥션 획득 대기 시간 (p95)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"agent-arena\"}[1m])) by (le))", "legendFormat": "p95 획득 시간" }
+      ]
+    },
+    {
+      "title": "HTTP 처리량 (초당 요청)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (uri) (rate(http_server_requests_seconds_count{application=\"agent-arena\", uri!=\"/actuator/prometheus\"}[1m]))", "legendFormat": "{{uri}}" }
+      ]
+    },
+    {
+      "title": "HTTP 지연 p95 / p99 (엔드포인트별)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"agent-arena\", uri!=\"/actuator/prometheus\"}[1m])) by (le, uri))", "legendFormat": "p95 {{uri}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"agent-arena\", uri!=\"/actuator/prometheus\"}[1m])) by (le, uri))", "legendFormat": "p99 {{uri}}" }
+      ]
+    },
+    {
+      "title": "HTTP 에러율 (5xx + 4xx)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"agent-arena\", status=~\"4..|5..\"}[1m]))", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "title": "JVM 라이브 스레드 (스케줄러 기아 관찰)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "refId": "A", "expr": "jvm_threads_live_threads{application=\"agent-arena\"}", "legendFormat": "live" },
+        { "refId": "B", "expr": "jvm_threads_states_threads{application=\"agent-arena\", state=\"blocked\"}", "legendFormat": "blocked" }
+      ]
+    },
+    {
+      "title": "JVM 힙 사용량",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "refId": "A", "expr": "sum(jvm_memory_used_bytes{application=\"agent-arena\", area=\"heap\"})", "legendFormat": "used" },
+        { "refId": "B", "expr": "sum(jvm_memory_max_bytes{application=\"agent-arena\", area=\"heap\"})", "legendFormat": "max" }
+      ]
+    }
+  ]
+}
