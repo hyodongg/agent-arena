@@ -1,0 +1,29 @@
+# 로컬 개발용 관측 스택. 앱과 MySQL은 로컬(Homebrew)에 그대로 두고 이 둘만 컨테이너로 띄운다.
+#   docker compose -f backend/monitoring/docker-compose.yml up -d
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: agent-arena-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      # 컨테이너에서 호스트(로컬에서 도는 앱)로 접근하기 위한 매핑. 리눅스에서도 동작한다.
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: agent-arena-grafana
+    ports:
+      # 3000은 프론트가 쓰므로 3001로 노출한다.
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
